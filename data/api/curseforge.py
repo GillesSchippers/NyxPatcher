@@ -97,7 +97,7 @@ class CurseForgeProvider(BaseProvider):
         Args:
             project_id: CurseForge project ID
             game_version: Minecraft game version to filter by
-            mod_loader: Mod loader to filter by (fabric, forge, quilt)
+            mod_loader: Mod loader to filter by (fabric, forge, quilt, neoforge)
             
         Returns:
             Dictionary containing version info or None if not found

@@ -43,7 +43,7 @@ class Config:
             config_file: Path to configuration file
             mod_directories: List of directories containing mods
             minecraft_version: Minecraft version to check for
-            mod_loader: Mod loader type (fabric, forge, quilt)
+            mod_loader: Mod loader type (fabric, forge, quilt, neoforge)
             download_directory: Directory to save downloaded mods
             ignore_mods: List of mod IDs to ignore
             default_mod_provider: Primary mod provider (modrinth, curseforge)
