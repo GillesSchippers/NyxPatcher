@@ -43,7 +43,7 @@ class Config:
             config_file: Path to configuration file
             mod_directories: List of directories containing mods
             minecraft_version: Minecraft version to check for
-            mod_loader: Mod loader type (fabric, forge, quilt)
+            mod_loader: Mod loader type (fabric, forge, quilt, neoforge)
             download_directory: Directory to save downloaded mods
             ignore_mods: List of mod IDs to ignore
             default_mod_provider: Primary mod provider (modrinth, curseforge)
@@ -226,7 +226,7 @@ class Config:
         """
         loader = self.mod_loader.lower()
         
-        if loader in ['fabric', 'forge', 'quilt']:
+        if loader in ['fabric', 'forge', 'quilt', 'neoforge']:
             return loader
         
         # Default to fabric if invalid
@@ -301,14 +301,17 @@ class Config:
         print("1. Fabric (default)")
         print("2. Forge")
         print("3. Quilt")
+        print("4. NeoForge")
         
-        loader_input = input("Enter your choice (1-3): ").strip()
+        loader_input = input("Enter your choice (1-4): ").strip()
         mod_loader = "fabric"  # Default
         
         if loader_input == "2":
             mod_loader = "forge"
         elif loader_input == "3":
             mod_loader = "quilt"
+        elif loader_input == "4":
+            mod_loader = "neoforge"
         
         # Get download directory
         default_download_dir = "downloads"

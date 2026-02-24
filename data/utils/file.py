@@ -29,7 +29,14 @@ MOD_EXTENSIONS = {".jar", ".zip"}
 META_INF_PATH = "META-INF/mods.toml"
 FABRIC_MOD_JSON = "fabric.mod.json"
 FORGE_TOML = "META-INF/mods.toml"
+NEOFORGE_TOML = "META-INF/neoforge.mods.toml"
 QUILT_JSON = "quilt.mod.json"
+# Pattern to identify a NeoForge dependency entry in an old-format mods.toml file.
+# Matches [[dependencies.<modid>]] sections that contain modId = "neoforge".
+NEOFORGE_DEPENDENCY_PATTERN = re.compile(
+    r'\[\[dependencies\.[^\]]+\]\][^\[]*modId\s*=\s*"neoforge"',
+    re.DOTALL
+)
 
 
 def download_file(url: str, output_path: str, timeout: int = 30) -> bool:
@@ -206,12 +213,11 @@ def get_mod_metadata(file_path: str) -> Dict[str, Any]:
                     if isinstance(depends, dict) and "minecraft" in depends:
                         result["mc_version"] = depends["minecraft"]
             
-            # Check for Forge mod
-            elif FORGE_TOML in zip_ref.namelist():
-                result["mod_loader"] = "forge"
+            # Check for NeoForge mod (new format: neoforge.mods.toml)
+            elif NEOFORGE_TOML in zip_ref.namelist():
+                result["mod_loader"] = "neoforge"
                 
-                # Parse TOML file manually since toml module might not be available
-                with zip_ref.open(FORGE_TOML) as f:
+                with zip_ref.open(NEOFORGE_TOML) as f:
                     content = f.read().decode('utf-8', errors='ignore')
                     
                     # Extract mod_id
@@ -234,7 +240,6 @@ def get_mod_metadata(file_path: str) -> Dict[str, Any]:
                     if desc_match:
                         result["description"] = desc_match.group(1).strip()
                     else:
-                        # Try single-line description
                         desc_match = re.search(r'description\s*=\s*"([^"]+)"', content)
                         if desc_match:
                             result["description"] = desc_match.group(1)
@@ -243,11 +248,47 @@ def get_mod_metadata(file_path: str) -> Dict[str, Any]:
                     authors_match = re.search(r'authors\s*=\s*"([^"]+)"', content)
                     if authors_match:
                         result["authors"] = authors_match.group(1)
+            
+            # Check for Forge mod (also handles old-format NeoForge mods)
+            elif FORGE_TOML in zip_ref.namelist():
+                # Parse TOML file manually since toml module might not be available
+                with zip_ref.open(FORGE_TOML) as f:
+                    content = f.read().decode('utf-8', errors='ignore')
+                
+                # Detect NeoForge 1.20.1 old format: has a neoforge dependency entry
+                if NEOFORGE_DEPENDENCY_PATTERN.search(content):
+                    result["mod_loader"] = "neoforge"
+                else:
+                    result["mod_loader"] = "forge"
+                
+                # Extract metadata (common to both Forge and old-format NeoForge)
+                mod_id_match = re.search(r'modId\s*=\s*"([^"]+)"', content)
+                if mod_id_match:
+                    result["mod_id"] = mod_id_match.group(1)
+                    
+                name_match = re.search(r'displayName\s*=\s*"([^"]+)"', content)
+                if name_match:
+                    result["mod_name"] = name_match.group(1)
+                    
+                version_match = re.search(r'version\s*=\s*"([^"]+)"', content)
+                if version_match:
+                    result["version"] = version_match.group(1)
+                    
+                desc_match = re.search(r'description\s*=\s*"""(.*?)"""', content, re.DOTALL)
+                if desc_match:
+                    result["description"] = desc_match.group(1).strip()
+                else:
+                    desc_match = re.search(r'description\s*=\s*"([^"]+)"', content)
+                    if desc_match:
+                        result["description"] = desc_match.group(1)
                         
-                    # Try to find MC version
-                    mc_version_match = re.search(r'minecraft\s*=\s*\[\s*"([^"]+)"', content)
-                    if mc_version_match:
-                        result["mc_version"] = mc_version_match.group(1)
+                authors_match = re.search(r'authors\s*=\s*"([^"]+)"', content)
+                if authors_match:
+                    result["authors"] = authors_match.group(1)
+                    
+                mc_version_match = re.search(r'minecraft\s*=\s*\[\s*"([^"]+)"', content)
+                if mc_version_match:
+                    result["mc_version"] = mc_version_match.group(1)
                         
             # Check for Quilt mod
             elif QUILT_JSON in zip_ref.namelist():
@@ -340,8 +381,9 @@ def is_valid_mod_file(file_path: str) -> bool:
             # Check for mod identifier files
             file_list = zip_ref.namelist()
             return any(id_file in file_list for id_file in [
-                FABRIC_MOD_JSON, 
-                FORGE_TOML, 
+                FABRIC_MOD_JSON,
+                NEOFORGE_TOML,
+                FORGE_TOML,
                 QUILT_JSON
             ])
     except zipfile.BadZipFile:

@@ -97,7 +97,7 @@ class CurseForgeProvider(BaseProvider):
         Args:
             project_id: CurseForge project ID
             game_version: Minecraft game version to filter by
-            mod_loader: Mod loader to filter by (fabric, forge, quilt)
+            mod_loader: Mod loader to filter by (fabric, forge, quilt, neoforge)
             
         Returns:
             Dictionary containing version info or None if not found
@@ -268,11 +268,12 @@ class CurseForgeProvider(BaseProvider):
             CurseForge mod loader type ID
         """
         # CurseForge mod loader type IDs
-        # 1: Forge, 4: Fabric, 5: Quilt
+        # 1: Forge, 4: Fabric, 5: Quilt, 6: NeoForge
         mapping = {
             "forge": 1,
             "fabric": 4,
-            "quilt": 5
+            "quilt": 5,
+            "neoforge": 6
         }
         return mapping.get(mod_loader.lower(), 0)  # 0 means Any
     
