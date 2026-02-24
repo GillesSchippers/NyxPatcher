@@ -6,7 +6,7 @@ A command-line tool for checking and updating Minecraft mods from both Modrinth 
 
 - **Multi-Platform Support**: Checks for updates on both Modrinth and CurseForge
 - **Smart Version Management**: Handles semantic versioning for accurate update detection
-- **Mod Loader Support**: Works with Fabric, Forge, and Quilt mods
+- **Mod Loader Support**: Works with Fabric, Forge, NeoForge, and Quilt mods
 - **Automatic Mod Detection**: Extracts metadata from mod JAR files to identify mods
 - **Version Filtering**: Ensures updates are compatible with your Minecraft version
 - **Interactive Mode**: Select which mods to update with an easy-to-use interface
@@ -19,7 +19,6 @@ A command-line tool for checking and updating Minecraft mods from both Modrinth 
 
 - Python 3.7 or higher
 - Internet connection
-- CurseForge API key (only if using CurseForge as a provider)
 
 ## Installation
 
@@ -49,6 +48,8 @@ On first run, the tool will guide you through an interactive setup process to cr
     "minecraft_version": "1.20.4",
     "mod_loader": "fabric",
     "download_directory": "downloads",
+    "backup_directory": "backups",
+    "auto_install": false,
     "ignore_mods": [],
     "default_mod_provider": "modrinth",
     "fallback_mod_provider": "curseforge",
@@ -62,12 +63,14 @@ On first run, the tool will guide you through an interactive setup process to cr
 |--------|-------------|
 | `mod_directories` | List of directories containing mod files to check |
 | `minecraft_version` | Target Minecraft version for compatibility (e.g., "1.20.4") |
-| `mod_loader` | Mod loader type: "fabric", "forge", or "quilt" |
+| `mod_loader` | Mod loader type: `"fabric"`, `"forge"`, `"neoforge"`, or `"quilt"` |
 | `download_directory` | Directory where updated mods will be saved |
+| `backup_directory` | Directory where replaced mod files are backed up before removal |
+| `auto_install` | When `true`, automatically install downloaded updates into mod directories and remove old versions |
 | `ignore_mods` | List of mod IDs to skip when checking for updates |
 | `default_mod_provider` | Primary mod repository ("modrinth" or "curseforge") |
 | `fallback_mod_provider` | Secondary mod repository to check if primary fails |
-| `curseforge_api_key` | API key for CurseForge (required for CurseForge access) |
+| `curseforge_api_key` | Optional personal API key for CurseForge. When omitted, a built-in default key is used and CurseForge works without any configuration. You can also set the `CURSEFORGE_API_KEY` environment variable as an alternative. Obtain your own key from [console.curseforge.com](https://console.curseforge.com/) if needed. |
 
 ## Usage
 
@@ -84,10 +87,11 @@ python -m nyxpatcher
 |--------|-------------|
 | `--debug` | Enable detailed debug output |
 | `--force` | Force update check, ignoring cache |
-| `--dry-run` | Simulate update process without downloading |
+| `--dry-run` | Simulate update process without downloading or installing — prints exactly which files would be downloaded and where they would be placed or moved |
 | `--config FILE` | Specify custom config file (default: config.json) |
 | `--no-interaction` | Run without interactive prompts |
 | `--download-all` | Automatically download all available updates |
+| `--auto-install` | Install downloaded updates into mod directories and remove old versions |
 
 ### Examples
 
@@ -101,15 +105,35 @@ Force refresh and automatically download all updates:
 python -m nyxpatcher --force --download-all
 ```
 
-Perform a dry run to see what would be updated:
+Perform a dry run to see what would be downloaded and where files would be placed:
 ```
 python -m nyxpatcher --dry-run
+```
+
+Perform a full dry run including the install step (shows backup, install, and removal paths):
+```
+python -m nyxpatcher --dry-run --download-all --auto-install
 ```
 
 Use a custom configuration file:
 ```
 python -m nyxpatcher --config server_config.json
 ```
+
+## Supported Mod Loaders
+
+NyxPatcher supports the following Minecraft mod loaders:
+
+| Loader | `mod_loader` value | Notes |
+|--------|--------------------|-------|
+| Fabric | `"fabric"` | Full support |
+| Forge | `"forge"` | Full support |
+| NeoForge | `"neoforge"` | Full support |
+| Quilt | `"quilt"` | Full support |
+
+**NeoForge compatibility notes:**
+- Old-format NeoForge 1.20.1 mods (those using a NeoForge dependency entry in `META-INF/mods.toml`) are automatically detected and treated as NeoForge mods.
+- When [Sinytra Connector](https://modrinth.com/mod/connector) is installed alongside NeoForge/Forge, Fabric mods in your mod directory are also supported. NyxPatcher will first look for a native NeoForge/Forge release of each Fabric mod; if none exists, it falls back to a Fabric release that Connector can run.
 
 ## Supported Mod Platforms
 
@@ -125,7 +149,7 @@ Key benefits of Modrinth:
 
 ### CurseForge
 
-[CurseForge](https://www.curseforge.com/minecraft) is the largest and most established mod repository for Minecraft, hosting thousands of mods, resource packs, and other content. To use CurseForge with NyxPatcher, you'll need a CurseForge API key, which can be obtained from [https://console.curseforge.com/](https://console.curseforge.com/).
+[CurseForge](https://www.curseforge.com/minecraft) is the largest and most established mod repository for Minecraft, hosting thousands of mods, resource packs, and other content. NyxPatcher works with CurseForge out of the box — no API key is needed. If you want to use your own personal API key (obtainable from [console.curseforge.com](https://console.curseforge.com/)), you can set `curseforge_api_key` in your config file to override the built-in default.
 
 Key benefits of CurseForge:
 - Largest collection of mods available
@@ -140,7 +164,11 @@ Key benefits of CurseForge:
 3. A summary of available updates is displayed
 4. In interactive mode, you can select which mods to update
 5. Selected mod updates are downloaded to your configured download directory
-6. A detailed report is generated showing all mod statuses
+6. When auto-install is enabled (via `--auto-install` or `"auto_install": true` in config):
+   - The old mod file is backed up to the configured `backup_directory`
+   - The newly downloaded mod is copied into the same mod directory as the old version
+   - The old mod file is removed, leaving only the updated version in place
+7. A detailed report is generated showing all mod statuses
 
 ## License
 

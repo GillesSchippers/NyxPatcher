@@ -3,6 +3,7 @@ CurseForge API provider implementation.
 """
 
 import logging
+import os
 import requests
 import time
 from typing import Dict, List, Optional, Any
@@ -16,27 +17,47 @@ from data.api.base import BaseProvider
 CURSEFORGE_API_BASE = "https://api.curseforge.com/v1"
 CURSEFORGE_GAME_ID = 432  # Minecraft game ID
 
+# Built-in public API key shared by several open-source Minecraft launchers
+# (e.g. Prism Launcher).  This allows CurseForge to work out of the box
+# without requiring users to supply their own key.  Users can override it by
+# setting the CURSEFORGE_API_KEY environment variable or via the config file.
+CURSEFORGE_DEFAULT_API_KEY = "$2a$10$bL4bIL5pUWqfcO7KwT2NleecEFV7SqMGqaGFRZLfRMOSMTWrIGaSq"
+
 
 class CurseForgeProvider(BaseProvider):
     """Provider for interacting with the CurseForge API."""
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str = ""):
         """
         Initialize the CurseForge provider.
         
+        Key resolution order (first non-empty value wins):
+        1. ``api_key`` argument (from config file)
+        2. ``CURSEFORGE_API_KEY`` environment variable
+        3. Built-in default key
+        
         Args:
-            api_key: CurseForge API key
+            api_key: Optional personal CurseForge API key from the config file.
         """
-        self.api_key = api_key
+        self.logger = logging.getLogger(__name__)
+        
+        # Resolve the key to use, preferring explicit > env-var > built-in
+        env_key = os.environ.get("CURSEFORGE_API_KEY", "")
+        if api_key:
+            self.api_key = api_key
+            self.logger.debug("Using CurseForge API key from configuration.")
+        elif env_key:
+            self.api_key = env_key
+            self.logger.debug("Using CurseForge API key from CURSEFORGE_API_KEY environment variable.")
+        else:
+            self.api_key = CURSEFORGE_DEFAULT_API_KEY
+            self.logger.debug("No custom CurseForge API key provided; using built-in default.")
+        
         self.headers = {
-            "x-api-key": api_key
+            "x-api-key": self.api_key
         }
         self.max_retries = 3
         self.retry_delay = 1  # seconds
-        self.logger = logging.getLogger(__name__)
-        
-        if not api_key:
-            self.logger.warning("CurseForge API key not provided. CurseForge functionality will be limited.")
     
     def get_project_id(self, mod_id: str) -> Optional[str]:
         """
@@ -48,10 +69,6 @@ class CurseForgeProvider(BaseProvider):
         Returns:
             CurseForge project ID or None if not found
         """
-        if not self.api_key:
-            self.logger.warning(f"CurseForge API key not provided, skipping CurseForge search for {mod_id}")
-            return None
-        
         try:
             url = f"{CURSEFORGE_API_BASE}/mods/search"
             params = {
@@ -102,10 +119,6 @@ class CurseForgeProvider(BaseProvider):
         Returns:
             Dictionary containing version info or None if not found
         """
-        if not self.api_key:
-            self.logger.warning(f"CurseForge API key not provided, skipping version check for project {project_id}")
-            return None
-        
         try:
             url = f"{CURSEFORGE_API_BASE}/mods/{project_id}/files"
             params = {

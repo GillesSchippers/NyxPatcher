@@ -18,6 +18,8 @@ class Config:
         "minecraft_version": "1.20.4",
         "mod_loader": "fabric",
         "download_directory": "downloads",
+        "backup_directory": "backups",
+        "auto_install": False,
         "ignore_mods": [],
         "default_mod_provider": "modrinth",
         "fallback_mod_provider": "curseforge",
@@ -31,6 +33,8 @@ class Config:
         minecraft_version: str = "1.20.4",
         mod_loader: str = "fabric",
         download_directory: str = "downloads",
+        backup_directory: str = "backups",
+        auto_install: bool = False,
         ignore_mods: Optional[List[str]] = None,
         default_mod_provider: str = "modrinth",
         fallback_mod_provider: str = "curseforge",
@@ -45,6 +49,8 @@ class Config:
             minecraft_version: Minecraft version to check for
             mod_loader: Mod loader type (fabric, forge, quilt, neoforge)
             download_directory: Directory to save downloaded mods
+            backup_directory: Directory to save backups of replaced mods
+            auto_install: Whether to automatically install updates into mod directories
             ignore_mods: List of mod IDs to ignore
             default_mod_provider: Primary mod provider (modrinth, curseforge)
             fallback_mod_provider: Secondary mod provider
@@ -55,6 +61,8 @@ class Config:
         self.minecraft_version = minecraft_version
         self.mod_loader = mod_loader
         self.download_directory = download_directory
+        self.backup_directory = backup_directory
+        self.auto_install = auto_install
         self.ignore_mods = ignore_mods or self.DEFAULT_CONFIG["ignore_mods"]
         self.default_mod_provider = default_mod_provider
         self.fallback_mod_provider = fallback_mod_provider
@@ -99,6 +107,8 @@ class Config:
                         minecraft_version=validated_config.get("minecraft_version"),
                         mod_loader=validated_config.get("mod_loader"),
                         download_directory=validated_config.get("download_directory"),
+                        backup_directory=validated_config.get("backup_directory"),
+                        auto_install=validated_config.get("auto_install"),
                         ignore_mods=validated_config.get("ignore_mods"),
                         default_mod_provider=validated_config.get("default_mod_provider"),
                         fallback_mod_provider=validated_config.get("fallback_mod_provider"),
@@ -139,6 +149,8 @@ class Config:
                 "minecraft_version": self.minecraft_version,
                 "mod_loader": self.mod_loader,
                 "download_directory": self.download_directory,
+                "backup_directory": self.backup_directory,
+                "auto_install": self.auto_install,
                 "ignore_mods": self.ignore_mods,
                 "default_mod_provider": self.default_mod_provider,
                 "fallback_mod_provider": self.fallback_mod_provider,
@@ -217,6 +229,40 @@ class Config:
             logging.error(f"Error creating download directory: {str(e)}")
             return False
     
+    def get_absolute_backup_directory(self) -> str:
+        """
+        Get the absolute path to the backup directory.
+        
+        Returns:
+            Absolute path to backup directory
+        """
+        if os.path.isabs(self.backup_directory):
+            return self.backup_directory
+        
+        # Make path absolute relative to script location
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(script_dir, self.backup_directory)
+    
+    def create_backup_directory(self) -> bool:
+        """
+        Create the backup directory if it doesn't exist.
+        
+        Returns:
+            True if directory exists or was created successfully, False otherwise
+        """
+        backup_dir = self.get_absolute_backup_directory()
+        
+        if os.path.exists(backup_dir):
+            return True
+            
+        try:
+            os.makedirs(backup_dir)
+            logging.info(f"Created backup directory: {backup_dir}")
+            return True
+        except OSError as e:
+            logging.error(f"Error creating backup directory: {str(e)}")
+            return False
+    
     def get_normalized_mod_loader(self) -> str:
         """
         Get normalized mod loader name.
@@ -260,12 +306,12 @@ class Config:
             default_mod_provider = "curseforge"
             fallback_mod_provider = "modrinth"
         
-        # Get CurseForge API key if needed
+        # Optionally get a CurseForge API key
         curseforge_api_key = ""
         if default_mod_provider == "curseforge" or fallback_mod_provider == "curseforge":
-            print("\nCurseForge API key is required to check for updates on CurseForge.")
-            print("You can get an API key from https://console.curseforge.com/")
-            curseforge_api_key = input("Enter your CurseForge API key (leave empty to skip CurseForge): ").strip()
+            print("\nCurseForge works without an API key (a built-in default is used automatically).")
+            print("You can optionally provide your own key from https://console.curseforge.com/")
+            curseforge_api_key = input("Enter your CurseForge API key (or press Enter to use the built-in default): ").strip()
         
         # Get mod directories
         mod_directories = []
@@ -329,6 +375,28 @@ class Config:
         
         print(f"Download directory set to: {download_directory}")
         
+        # Get backup directory
+        default_backup_dir = "backups"
+        print("\nEnter the directory where old mods should be backed up before being replaced.")
+        print(f"(Default: {default_backup_dir} - will be created in the script directory)")
+        backup_dir_input = input("Backup directory: ").strip()
+        
+        backup_directory = backup_dir_input if backup_dir_input else default_backup_dir
+        
+        # Validate and normalize the backup path
+        if not os.path.isabs(backup_directory):
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            backup_directory = os.path.join(script_dir, backup_directory)
+        
+        print(f"Backup directory set to: {backup_directory}")
+        
+        # Ask about auto-install
+        print("\nAuto-install will automatically copy downloaded updates into your mod")
+        print("directories and remove the old versions (backing them up first).")
+        auto_install_input = input("Enable auto-install of updates? (y/N): ").strip().lower()
+        auto_install = auto_install_input == "y"
+        print(f"Auto-install: {'enabled' if auto_install else 'disabled'}")
+        
         # Get ignore list
         ignore_mods = []
         print("\nOptionally, enter mod IDs to ignore when checking for updates.")
@@ -351,6 +419,8 @@ class Config:
             minecraft_version=minecraft_version,
             mod_loader=mod_loader,
             download_directory=download_directory,
+            backup_directory=backup_directory,
+            auto_install=auto_install,
             ignore_mods=ignore_mods,
             default_mod_provider=default_mod_provider,
             fallback_mod_provider=fallback_mod_provider,
