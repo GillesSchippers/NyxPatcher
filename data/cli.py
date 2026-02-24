@@ -88,6 +88,11 @@ def parse_args() -> argparse.Namespace:
         help="Automatically download all available updates without prompting"
     )
     parser.add_argument(
+        "--auto-install",
+        action="store_true",
+        help="After downloading, automatically install updates into mod directories and remove old versions"
+    )
+    parser.add_argument(
         "--version", 
         action="store_true", 
         help="Display version information and exit"
@@ -167,12 +172,16 @@ def run() -> int:
                     logger.info("Dry run: simulating download of all updates (--dry-run specified)")
                 else:
                     logger.info("Automatically downloading all updates (--download-all specified)")
-                checker.download_updates(updates, dry_run=args.dry_run)
+                downloaded = checker.download_updates(updates, dry_run=args.dry_run)
+                if downloaded and (args.auto_install or config.auto_install):
+                    checker.install_updates(downloaded, dry_run=args.dry_run)
             else:
                 # Interactive download menu
                 selected_updates = checker.interactive_download_menu(updates)
                 if selected_updates:
-                    checker.download_updates(selected_updates, dry_run=args.dry_run)
+                    downloaded = checker.download_updates(selected_updates, dry_run=args.dry_run)
+                    if downloaded and (args.auto_install or config.auto_install):
+                        checker.install_updates(downloaded, dry_run=args.dry_run)
                 else:
                     logger.info("No updates selected for download")
         else:

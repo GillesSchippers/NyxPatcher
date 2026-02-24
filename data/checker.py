@@ -8,6 +8,7 @@ checking for updates, and downloading newer versions.
 import os
 import sys
 import json
+import shutil
 import logging
 import datetime
 from typing import Dict, List, Any, Optional, Set, Tuple
@@ -260,6 +261,7 @@ class ModUpdateChecker:
                     
                     # If an update is available, add it to the list
                     if update_info and update_info.get("update_available"):
+                        update_info["current_file_path"] = normalized_path
                         updates.append(update_info)
                         # Only update the description when the update count changes
                         if len(updates) != last_update_count:
@@ -586,6 +588,7 @@ class ModUpdateChecker:
                 
                 if dry_run:
                     tqdm.write(f"[DRY RUN] Would download {mod_name} ({mod_id}) v{latest_version} via {provider}")
+                    update["downloaded_file_path"] = output_path
                     successful_downloads.append(update)
                     continue
                     
@@ -594,6 +597,7 @@ class ModUpdateChecker:
                 
                 if success:
                     self.logger.debug(f"Successfully downloaded {mod_id} v{latest_version}")
+                    update["downloaded_file_path"] = output_path
                     successful_downloads.append(update)
                 else:
                     # Log error without breaking the progress bar
@@ -609,6 +613,114 @@ class ModUpdateChecker:
             print("", flush=True)  # Add a blank line after the progress bar
             
         return successful_downloads
+    
+    def install_updates(
+        self,
+        downloaded_updates: List[Dict[str, Any]],
+        dry_run: bool = False
+    ) -> List[Dict[str, Any]]:
+        """
+        Install downloaded updates into their original mod directories.
+        
+        For each update:
+        1. Backs up the old mod file to the configured backup directory.
+        2. Copies the newly downloaded mod into the same directory as the old mod.
+        3. Removes the old mod file (unless it was overwritten in place).
+        
+        Args:
+            downloaded_updates: List of update dicts that include
+                ``current_file_path`` and ``downloaded_file_path``.
+            dry_run: If True, only simulate the installation.
+            
+        Returns:
+            List of successfully installed updates.
+        """
+        if not downloaded_updates:
+            return []
+        
+        backup_dir = self.config.get_absolute_backup_directory()
+        
+        if not dry_run:
+            if not self.config.create_backup_directory():
+                self.logger.error(f"Failed to create backup directory: {backup_dir}")
+                return []
+        
+        installed_updates = []
+        
+        if dry_run:
+            tqdm.write(f"[DRY RUN] Would install {len(downloaded_updates)} mod update(s) — no files will be moved")
+        else:
+            tqdm.write(f"Installing {len(downloaded_updates)} mod update(s)...")
+        
+        for update in downloaded_updates:
+            mod_id = update["mod_id"]
+            mod_name = update["mod_name"]
+            current_file_path = update.get("current_file_path")
+            downloaded_file_path = update.get("downloaded_file_path")
+            
+            if not current_file_path:
+                self.logger.warning(f"No original file path recorded for {mod_id}, skipping install")
+                continue
+            
+            if not downloaded_file_path:
+                self.logger.warning(f"No downloaded file path recorded for {mod_id}, skipping install")
+                continue
+            
+            if not dry_run and not os.path.exists(downloaded_file_path):
+                self.logger.error(f"Downloaded file not found: {downloaded_file_path}")
+                continue
+            
+            install_dir = os.path.dirname(current_file_path)
+            new_filename = os.path.basename(downloaded_file_path)
+            new_file_path = os.path.join(install_dir, new_filename)
+            old_filename = os.path.basename(current_file_path)
+            
+            if dry_run:
+                tqdm.write(f"[DRY RUN] Would install {mod_name} into {install_dir}")
+                tqdm.write(f"[DRY RUN]   Backup:  {old_filename} → {backup_dir}")
+                tqdm.write(f"[DRY RUN]   Install: {new_filename}")
+                tqdm.write(f"[DRY RUN]   Remove:  {old_filename}")
+                update["installed_file_path"] = new_file_path
+                installed_updates.append(update)
+                continue
+            
+            try:
+                # Step 1: Back up the old mod file with a timestamped name to
+                # prevent collisions when multiple mods share the same filename.
+                backup_ok = True
+                if os.path.exists(current_file_path):
+                    old_stem, old_ext = os.path.splitext(old_filename)
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    backup_filename = f"{old_stem}_{timestamp}{old_ext}"
+                    backup_path = os.path.join(backup_dir, backup_filename)
+                    shutil.copy2(current_file_path, backup_path)
+                    if os.path.exists(backup_path):
+                        self.logger.info(f"Backed up {current_file_path} to {backup_path}")
+                    else:
+                        self.logger.error(f"Backup could not be verified for {current_file_path}, skipping install")
+                        backup_ok = False
+                
+                if not backup_ok:
+                    continue
+                
+                # Step 2: Copy the new mod into the install directory
+                shutil.copy2(downloaded_file_path, new_file_path)
+                self.logger.info(f"Installed {mod_id} v{update.get('latest_version')} to {new_file_path}")
+                
+                # Step 3: Remove the old mod file (only when filenames differ)
+                if os.path.exists(current_file_path) and current_file_path != new_file_path:
+                    os.remove(current_file_path)
+                    self.logger.info(f"Removed old mod file: {current_file_path}")
+                
+                update["installed_file_path"] = new_file_path
+                installed_updates.append(update)
+                tqdm.write(
+                    f"✅ Installed {mod_name}: {old_filename} → {new_filename}"
+                )
+            except Exception as e:
+                self.logger.error(f"Failed to install {mod_id}: {e}")
+        
+        return installed_updates
     
     def _generate_output_filename(
         self, 

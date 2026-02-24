@@ -49,6 +49,8 @@ On first run, the tool will guide you through an interactive setup process to cr
     "minecraft_version": "1.20.4",
     "mod_loader": "fabric",
     "download_directory": "downloads",
+    "backup_directory": "backups",
+    "auto_install": false,
     "ignore_mods": [],
     "default_mod_provider": "modrinth",
     "fallback_mod_provider": "curseforge",
@@ -64,6 +66,8 @@ On first run, the tool will guide you through an interactive setup process to cr
 | `minecraft_version` | Target Minecraft version for compatibility (e.g., "1.20.4") |
 | `mod_loader` | Mod loader type: "fabric", "forge", or "quilt" |
 | `download_directory` | Directory where updated mods will be saved |
+| `backup_directory` | Directory where replaced mod files are backed up before removal |
+| `auto_install` | When `true`, automatically install downloaded updates into mod directories and remove old versions |
 | `ignore_mods` | List of mod IDs to skip when checking for updates |
 | `default_mod_provider` | Primary mod repository ("modrinth" or "curseforge") |
 | `fallback_mod_provider` | Secondary mod repository to check if primary fails |
@@ -88,6 +92,7 @@ python -m nyxpatcher
 | `--config FILE` | Specify custom config file (default: config.json) |
 | `--no-interaction` | Run without interactive prompts |
 | `--download-all` | Automatically download all available updates |
+| `--auto-install` | Install downloaded updates into mod directories and remove old versions |
 
 ### Examples
 
@@ -140,7 +145,11 @@ Key benefits of CurseForge:
 3. A summary of available updates is displayed
 4. In interactive mode, you can select which mods to update
 5. Selected mod updates are downloaded to your configured download directory
-6. A detailed report is generated showing all mod statuses
+6. When auto-install is enabled (via `--auto-install` or `"auto_install": true` in config):
+   - The old mod file is backed up to the configured `backup_directory`
+   - The newly downloaded mod is copied into the same mod directory as the old version
+   - The old mod file is removed, leaving only the updated version in place
+7. A detailed report is generated showing all mod statuses
 
 ## License
 
