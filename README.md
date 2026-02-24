@@ -6,7 +6,7 @@ A command-line tool for checking and updating Minecraft mods from both Modrinth 
 
 - **Multi-Platform Support**: Checks for updates on both Modrinth and CurseForge
 - **Smart Version Management**: Handles semantic versioning for accurate update detection
-- **Mod Loader Support**: Works with Fabric, Forge, and Quilt mods
+- **Mod Loader Support**: Works with Fabric, Forge, NeoForge, and Quilt mods
 - **Automatic Mod Detection**: Extracts metadata from mod JAR files to identify mods
 - **Version Filtering**: Ensures updates are compatible with your Minecraft version
 - **Interactive Mode**: Select which mods to update with an easy-to-use interface
@@ -64,7 +64,7 @@ On first run, the tool will guide you through an interactive setup process to cr
 |--------|-------------|
 | `mod_directories` | List of directories containing mod files to check |
 | `minecraft_version` | Target Minecraft version for compatibility (e.g., "1.20.4") |
-| `mod_loader` | Mod loader type: "fabric", "forge", or "quilt" |
+| `mod_loader` | Mod loader type: `"fabric"`, `"forge"`, `"neoforge"`, or `"quilt"` |
 | `download_directory` | Directory where updated mods will be saved |
 | `backup_directory` | Directory where replaced mod files are backed up before removal |
 | `auto_install` | When `true`, automatically install downloaded updates into mod directories and remove old versions |
@@ -88,7 +88,7 @@ python -m nyxpatcher
 |--------|-------------|
 | `--debug` | Enable detailed debug output |
 | `--force` | Force update check, ignoring cache |
-| `--dry-run` | Simulate update process without downloading |
+| `--dry-run` | Simulate update process without downloading or installing — prints exactly which files would be downloaded and where they would be placed or moved |
 | `--config FILE` | Specify custom config file (default: config.json) |
 | `--no-interaction` | Run without interactive prompts |
 | `--download-all` | Automatically download all available updates |
@@ -106,15 +106,35 @@ Force refresh and automatically download all updates:
 python -m nyxpatcher --force --download-all
 ```
 
-Perform a dry run to see what would be updated:
+Perform a dry run to see what would be downloaded and where files would be placed:
 ```
 python -m nyxpatcher --dry-run
+```
+
+Perform a full dry run including the install step (shows backup, install, and removal paths):
+```
+python -m nyxpatcher --dry-run --download-all --auto-install
 ```
 
 Use a custom configuration file:
 ```
 python -m nyxpatcher --config server_config.json
 ```
+
+## Supported Mod Loaders
+
+NyxPatcher supports the following Minecraft mod loaders:
+
+| Loader | `mod_loader` value | Notes |
+|--------|--------------------|-------|
+| Fabric | `"fabric"` | Full support |
+| Forge | `"forge"` | Full support |
+| NeoForge | `"neoforge"` | Full support |
+| Quilt | `"quilt"` | Full support |
+
+**NeoForge compatibility notes:**
+- Old-format NeoForge 1.20.1 mods (those using a NeoForge dependency entry in `META-INF/mods.toml`) are automatically detected and treated as NeoForge mods.
+- When [Sinytra Connector](https://modrinth.com/mod/connector) is installed alongside NeoForge/Forge, Fabric mods in your mod directory are also supported. NyxPatcher will first look for a native NeoForge/Forge release of each Fabric mod; if none exists, it falls back to a Fabric release that Connector can run.
 
 ## Supported Mod Platforms
 

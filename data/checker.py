@@ -588,6 +588,7 @@ class ModUpdateChecker:
                 
                 if dry_run:
                     tqdm.write(f"[DRY RUN] Would download {mod_name} ({mod_id}) v{latest_version} via {provider}")
+                    tqdm.write(f"[DRY RUN]   → {output_path}")
                     update["downloaded_file_path"] = output_path
                     successful_downloads.append(update)
                     continue
@@ -676,10 +677,16 @@ class ModUpdateChecker:
             old_filename = os.path.basename(current_file_path)
             
             if dry_run:
-                tqdm.write(f"[DRY RUN] Would install {mod_name} into {install_dir}")
-                tqdm.write(f"[DRY RUN]   Backup:  {old_filename} → {backup_dir}")
-                tqdm.write(f"[DRY RUN]   Install: {new_filename}")
-                tqdm.write(f"[DRY RUN]   Remove:  {old_filename}")
+                old_stem, old_ext = os.path.splitext(old_filename)
+                backup_filename_preview = f"{old_stem}_<timestamp>{old_ext}"
+                backup_path_preview = os.path.join(backup_dir, backup_filename_preview)
+                tqdm.write(f"[DRY RUN] Would install {mod_name} ({mod_id}) v{update.get('current_version', '?')} → v{update.get('latest_version', '?')}")
+                tqdm.write(f"[DRY RUN]   Backup:  {current_file_path}")
+                tqdm.write(f"[DRY RUN]            → {backup_path_preview}")
+                tqdm.write(f"[DRY RUN]   Install: {downloaded_file_path}")
+                tqdm.write(f"[DRY RUN]            → {new_file_path}")
+                if current_file_path != new_file_path:
+                    tqdm.write(f"[DRY RUN]   Remove:  {current_file_path}")
                 update["installed_file_path"] = new_file_path
                 installed_updates.append(update)
                 continue
