@@ -306,12 +306,12 @@ class Config:
             default_mod_provider = "curseforge"
             fallback_mod_provider = "modrinth"
         
-        # Get CurseForge API key if needed
+        # Optionally get a CurseForge API key
         curseforge_api_key = ""
         if default_mod_provider == "curseforge" or fallback_mod_provider == "curseforge":
-            print("\nCurseForge API key is required to check for updates on CurseForge.")
-            print("You can get an API key from https://console.curseforge.com/")
-            curseforge_api_key = input("Enter your CurseForge API key (leave empty to skip CurseForge): ").strip()
+            print("\nCurseForge works without an API key (a built-in default is used automatically).")
+            print("You can optionally provide your own key from https://console.curseforge.com/")
+            curseforge_api_key = input("Enter your CurseForge API key (or press Enter to use the built-in default): ").strip()
         
         # Get mod directories
         mod_directories = []

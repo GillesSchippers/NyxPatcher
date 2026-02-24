@@ -19,7 +19,6 @@ A command-line tool for checking and updating Minecraft mods from both Modrinth 
 
 - Python 3.7 or higher
 - Internet connection
-- CurseForge API key (only if using CurseForge as a provider)
 
 ## Installation
 
@@ -71,7 +70,7 @@ On first run, the tool will guide you through an interactive setup process to cr
 | `ignore_mods` | List of mod IDs to skip when checking for updates |
 | `default_mod_provider` | Primary mod repository ("modrinth" or "curseforge") |
 | `fallback_mod_provider` | Secondary mod repository to check if primary fails |
-| `curseforge_api_key` | API key for CurseForge (required for CurseForge access) |
+| `curseforge_api_key` | Optional personal API key for CurseForge. When omitted, a built-in default key is used and CurseForge works without any configuration. You can also set the `CURSEFORGE_API_KEY` environment variable as an alternative. Obtain your own key from [console.curseforge.com](https://console.curseforge.com/) if needed. |
 
 ## Usage
 
@@ -150,7 +149,7 @@ Key benefits of Modrinth:
 
 ### CurseForge
 
-[CurseForge](https://www.curseforge.com/minecraft) is the largest and most established mod repository for Minecraft, hosting thousands of mods, resource packs, and other content. To use CurseForge with NyxPatcher, you'll need a CurseForge API key, which can be obtained from [https://console.curseforge.com/](https://console.curseforge.com/).
+[CurseForge](https://www.curseforge.com/minecraft) is the largest and most established mod repository for Minecraft, hosting thousands of mods, resource packs, and other content. NyxPatcher works with CurseForge out of the box — no API key is needed. If you want to use your own personal API key (obtainable from [console.curseforge.com](https://console.curseforge.com/)), you can set `curseforge_api_key` in your config file to override the built-in default.
 
 Key benefits of CurseForge:
 - Largest collection of mods available

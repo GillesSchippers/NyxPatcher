@@ -111,15 +111,11 @@ class ModUpdateChecker:
         # Initialize Modrinth provider (always available)
         self.providers["modrinth"] = ModrinthProvider()
         
-        # Initialize CurseForge provider if API key is available
-        if self.config.curseforge_api_key:
-            self.providers["curseforge"] = CurseForgeProvider(
-                api_key=self.config.curseforge_api_key
-            )
-        else:
-            self.logger.warning(
-                "CurseForge API key not set. CurseForge provider will not be available."
-            )
+        # Always initialize CurseForge; a built-in default key is used
+        # transparently when the user has not provided their own.
+        self.providers["curseforge"] = CurseForgeProvider(
+            api_key=self.config.curseforge_api_key
+        )
     
     # Mod ID used by the Sinytra Connector mod
     CONNECTOR_MOD_ID = "connector"
