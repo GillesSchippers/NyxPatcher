@@ -6,6 +6,7 @@ import os
 import sys
 import argparse
 import logging
+import datetime
 from typing import List, Dict, Any, Optional
 
 from data.config import Config
@@ -121,8 +122,12 @@ def run() -> int:
         display_version_info(verbose=args.version_verbose)
         return 0
     
+    # Capture the run start time once so that the log file and the update
+    # report share the same timestamp in their filenames.
+    start_time = datetime.datetime.now()
+
     # Setup logging
-    setup_logging(debug_mode=args.debug)
+    setup_logging(debug_mode=args.debug, start_time=start_time)
     
     # Configure console handlers to minimize output
     root_logger = logging.getLogger()
@@ -148,7 +153,8 @@ def run() -> int:
         checker = ModUpdateChecker(
             config=config,
             cache=cache,
-            force_update=args.force
+            force_update=args.force,
+            start_time=start_time
         )
         
         # Check for updates
