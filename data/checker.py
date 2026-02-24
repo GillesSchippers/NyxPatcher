@@ -354,12 +354,28 @@ class ModUpdateChecker:
             
         self.logger.debug(f"Checking updates for {mod_id} (current: {current_version})")
         
-        # Get the latest version from providers
-        latest_version_info = self._get_latest_version(
-            project_ids,
-            self.config.minecraft_version,
-            self.config.get_normalized_mod_loader()
-        )
+        configured_loader = self.config.get_normalized_mod_loader()
+        mod_loader = mod_metadata.get("mod_loader")
+        
+        # Determine which loaders to check, in priority order.
+        # Sinytra Connector allows Fabric mods to run on NeoForge.
+        # When the configured loader is neoforge and the mod metadata is for fabric,
+        # check for a neoforge release first (main loader takes priority), then fall
+        # back to a fabric release (which Sinytra Connector can run).
+        if configured_loader == "neoforge" and mod_loader == "fabric":
+            loaders_to_check = ["neoforge", "fabric"]
+        else:
+            loaders_to_check = [configured_loader]
+        
+        latest_version_info = None
+        for loader in loaders_to_check:
+            latest_version_info = self._get_latest_version(
+                project_ids,
+                self.config.minecraft_version,
+                loader
+            )
+            if latest_version_info:
+                break
         
         if not latest_version_info:
             self.logger.info(f"No update information found for {mod_id}")

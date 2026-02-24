@@ -268,11 +268,12 @@ class CurseForgeProvider(BaseProvider):
             CurseForge mod loader type ID
         """
         # CurseForge mod loader type IDs
-        # 1: Forge, 4: Fabric, 5: Quilt
+        # 1: Forge, 4: Fabric, 5: Quilt, 6: NeoForge
         mapping = {
             "forge": 1,
             "fabric": 4,
-            "quilt": 5
+            "quilt": 5,
+            "neoforge": 6
         }
         return mapping.get(mod_loader.lower(), 0)  # 0 means Any
     
