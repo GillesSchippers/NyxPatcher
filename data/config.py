@@ -311,6 +311,7 @@ class Config:
         if default_mod_provider == "curseforge" or fallback_mod_provider == "curseforge":
             print("\nCurseForge works without an API key (a built-in default is used automatically).")
             print("You can optionally provide your own key from https://console.curseforge.com/")
+            print("(Note: keys from legacy.curseforge.com/account/api-tokens are also accepted)")
             curseforge_api_key = input("Enter your CurseForge API key (or press Enter to use the built-in default): ").strip()
         
         # Get mod directories
