@@ -64,7 +64,8 @@ class ModUpdateChecker:
         self,
         config: Config,
         cache: ModCache,
-        force_update: bool = False
+        force_update: bool = False,
+        start_time: Optional[datetime.datetime] = None
     ):
         """
         Initialize the mod update checker.
@@ -73,11 +74,14 @@ class ModUpdateChecker:
             config: Configuration object
             cache: Cache manager object
             force_update: Whether to force update checks, ignoring cache
+            start_time: Datetime captured at program startup; used to give
+                the update report the same timestamp as the log file.
         """
         self.config = config
         self.cache = cache
         self.force_update = force_update
         self.logger = logging.getLogger(__name__)
+        self._start_time = start_time if start_time is not None else datetime.datetime.now()
         
         # Whether Sinytra Connector is installed (detected during check_updates)
         self._connector_installed: bool = False
@@ -306,6 +310,17 @@ class ModUpdateChecker:
         cached_info = None
         if not self.force_update:
             cached_info = self.cache.get_mod_file_info(file_path)
+            if cached_info:
+                # Invalidate the cached entry if the file size has changed –
+                # this ensures the local hash is always current (important for
+                # hash-based update detection).
+                try:
+                    current_size = os.path.getsize(file_path)
+                except OSError:
+                    current_size = 0
+                if current_size != cached_info.get('file_size', 0):
+                    self.logger.debug(f"File size changed for {file_path}, invalidating cache")
+                    cached_info = None
             
         if cached_info:
             self.logger.debug(f"Using cached metadata for {file_path}")
@@ -422,13 +437,34 @@ class ModUpdateChecker:
             self.logger.warning(f"No version number in update info for {mod_id}")
             return None
             
-        # Check if update is available
-        update_available = compare_versions(current_version, latest_version)
+        # Prefer hash-based update detection: compare the SHA1 of the installed
+        # file against the hash of the latest release reported by the API.
+        # This is provider-agnostic and immune to version-string naming quirks
+        # (e.g. Modrinth/CurseForge embedding the MC version in the string).
+        local_hash = mod_metadata.get("file_hash")
+        remote_hash = latest_version_info.get("file_hash")
         
-        if update_available:
-            self.logger.debug(f"Update available for {mod_id}: {current_version} -> {latest_version}")
+        if local_hash and remote_hash:
+            # Both hashes are already lowercase (hashlib returns lowercase hex;
+            # providers normalise on store), but we normalise defensively here
+            # in case a cached value was written by an older code version.
+            update_available = local_hash.lower() != remote_hash.lower()
+            detection_method = "hash"
+            if update_available:
+                self.logger.debug(
+                    f"Hash mismatch for {mod_id}: local={local_hash[:12]}... "
+                    f"remote={remote_hash[:12]}..."
+                )
+            else:
+                self.logger.debug(f"Hash match for {mod_id}: no update needed")
         else:
-            self.logger.debug(f"No update needed for {mod_id} (current: {current_version}, latest: {latest_version})")
+            # Fall back to version-string comparison when hashes are unavailable
+            update_available = compare_versions(current_version, latest_version)
+            detection_method = "version"
+            if update_available:
+                self.logger.debug(f"Update available for {mod_id}: {current_version} -> {latest_version}")
+            else:
+                self.logger.debug(f"No update needed for {mod_id} (current: {current_version}, latest: {latest_version})")
             
         # Prepare update information
         update_info = {
@@ -440,7 +476,10 @@ class ModUpdateChecker:
             "update_available": update_available,
             "version_info": latest_version_info,
             "provider": latest_version_info.get("provider"),
-            "metadata": mod_metadata
+            "metadata": mod_metadata,
+            "detection_method": detection_method,
+            "local_hash": local_hash,
+            "remote_hash": remote_hash,
         }
         
         return update_info
@@ -583,7 +622,8 @@ class ModUpdateChecker:
                 self.logger.debug(f"Downloading {mod_id} v{latest_version} to {output_path}")
                 
                 if dry_run:
-                    tqdm.write(f"[DRY RUN] Would download {mod_name} ({mod_id}) v{latest_version} via {provider}")
+                    detection = update.get("detection_method", "version")
+                    tqdm.write(f"[DRY RUN] Would download {mod_name} ({mod_id}) v{latest_version} via {provider} [{detection}]")
                     tqdm.write(f"[DRY RUN]   → {output_path}")
                     update["downloaded_file_path"] = output_path
                     successful_downloads.append(update)
@@ -774,15 +814,15 @@ class ModUpdateChecker:
                 self.logger.error(f"Failed to create reports directory: {report_dir}")
                 return None
                 
-            # Generate report filename with timestamp
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Generate report filename with timestamp matching the log file
+            timestamp = self._start_time.strftime("%Y%m%d_%H%M%S")
             report_file = os.path.join(report_dir, f"update_report_{timestamp}.txt")
             
             # Write report
             with open(report_file, 'w', encoding='utf-8') as f:
                 f.write(f"=== {PACKAGE_NAME} Mod Update Report ===\n")
                 f.write(f"{PACKAGE_NAME} Version: {__version__} (Released: {__release_date__})\n")
-                f.write(f"Report Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Report Generated: {self._start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"Minecraft Version: {self.config.minecraft_version}\n")
                 f.write(f"Mod Loader: {self.config.mod_loader}\n")
                 f.write(f"Repository: {REPOSITORY_URL}\n")
@@ -803,6 +843,12 @@ class ModUpdateChecker:
                     f.write(f"   Current Version: {current_version}\n")
                     f.write(f"   Latest Version: {latest_version}\n")
                     f.write(f"   Provider: {provider}\n")
+                    f.write(f"   Detection: {update.get('detection_method', 'version')}\n")
+                    local_hash = update.get("local_hash")
+                    remote_hash = update.get("remote_hash")
+                    if local_hash and remote_hash:
+                        f.write(f"   Local SHA1:  {local_hash}\n")
+                        f.write(f"   Remote SHA1: {remote_hash}\n")
                     
                     # Get and write mod page URL with fallbacks
                     mod_page_url = version_info.get("mod_page_url")

@@ -99,16 +99,31 @@ def normalize_version(version: str) -> str:
         version = version[1:]
     
     # Handle specific patterns:
-    # MC version patterns like "MC1.19.2-1.0.0" -> "1.0.0"
-    mc_pattern = re.search(r'MC\d+\.\d+(\.\d+)?-([0-9.]+)', version)
+    # MC version patterns like "mc1.19.2-1.0.0" or "MC1.21.1-0.15.2" -> "1.0.0"
+    # (case-insensitive to catch both "MC" and "mc" prefixes)
+    mc_pattern = re.search(r'(?i)mc\d+\.\d+(?:\.\d+)?-([0-9.]+)', version)
     if mc_pattern:
-        version = mc_pattern.group(2)
-    
-    # Handle patterns like "mod-1.2.3" -> "1.2.3"
-    dash_pattern = re.search(r'[a-zA-Z]+-(\d+\.\d+(\.\d+)?)', version)
-    if dash_pattern:
-        version = dash_pattern.group(1)
-    
+        version = mc_pattern.group(1)
+    else:
+        # Handle "neoforge-1.21.1-1.5.10" -> "1.5.10" (loader-gameversion-modversion)
+        # Use re.match so we only strip a prefix, not a mid-string match.
+        loader_game_mod = re.match(r'[a-zA-Z]+-\d+\.\d+(?:\.\d+)?-(\d+(?:\.\d+)*)', version)
+        if loader_game_mod:
+            version = loader_game_mod.group(1)
+        else:
+            # Handle "neoforge-1.5.10" -> "1.5.10" (loader prefix only)
+            dash_pattern = re.match(r'[a-zA-Z]+-(\d+\.\d+(?:\.\d+)?)', version)
+            if dash_pattern:
+                version = dash_pattern.group(1)
+
+    # Handle "1.21.1-1.5.10-neoforge" or "1.21-2.11.11-neoforge" -> "1.5.10" / "2.11.11"
+    # (gameversion-modversion with optional loader/build suffix or end of string)
+    game_mod_pattern = re.match(
+        r'\d+\.\d+(?:\.\d+)?-(\d+(?:\.\d+)*)(?:[+-]|$)', version
+    )
+    if game_mod_pattern:
+        version = game_mod_pattern.group(1)
+
     # Trim whitespace
     version = version.strip()
     

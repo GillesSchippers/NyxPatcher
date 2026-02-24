@@ -23,7 +23,8 @@ def setup_logging(
     log_dir: str = DEFAULT_LOG_DIRECTORY,
     log_level: int = DEFAULT_LOG_LEVEL,
     debug_mode: bool = False,
-    console_output: bool = True
+    console_output: bool = True,
+    start_time: Optional[datetime.datetime] = None
 ) -> None:
     """
     Set up logging configuration for the application.
@@ -33,6 +34,9 @@ def setup_logging(
         log_level: Default logging level (overridden by debug_mode if True)
         debug_mode: Enable debug logging
         console_output: Enable console output
+        start_time: Optional datetime to use for the log filename timestamp.
+            When provided the log file name matches other per-run artefacts
+            (e.g. the update report) that were stamped at the same moment.
     """
     # Set root logger level
     root_logger = logging.getLogger()
@@ -61,7 +65,8 @@ def setup_logging(
         os.makedirs(log_dir, exist_ok=True)
         
         # Generate log filename with timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = start_time if start_time is not None else datetime.datetime.now()
+        timestamp = ts.strftime("%Y%m%d_%H%M%S")
         log_file = os.path.join(log_dir, f"mod_updater_{timestamp}.log")
         
         # Add file handler

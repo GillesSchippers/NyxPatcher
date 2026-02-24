@@ -168,6 +168,14 @@ class CurseForgeProvider(BaseProvider):
             download_url = latest_file.get('downloadUrl')
             file_id = latest_file.get('id')
             
+            # Extract SHA1 hash (algo=1) for hash-based update detection
+            file_hash = None
+            for h in latest_file.get('hashes', []):
+                if h.get('algo') == 1:  # algo 1 = SHA1, algo 2 = MD5
+                    raw = h.get('value', '')
+                    file_hash = raw.lower() if raw else None
+                    break
+            
             return {
                 'version_number': latest_file.get('displayName', '').split('-')[-1].strip(),
                 'version_id': str(file_id),
@@ -175,6 +183,7 @@ class CurseForgeProvider(BaseProvider):
                 'game_versions': latest_file.get('gameVersions', []),
                 'project_id': project_id,
                 'files': [{'url': download_url if download_url else f"curseforge:{file_id}"}],
+                'file_hash': file_hash,
                 'provider': 'curseforge'
             }
         except Exception as e:

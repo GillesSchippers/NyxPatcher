@@ -116,6 +116,16 @@ class ModrinthProvider(BaseProvider):
                 # Add the provider name to the version info
                 version_info = filtered_versions[0]
                 version_info['provider'] = 'modrinth'
+                # Extract the primary file's SHA1 hash for hash-based update detection
+                file_hash = None
+                for file_entry in version_info.get('files', []):
+                    if file_entry.get('primary', False):
+                        file_hash = file_entry.get('hashes', {}).get('sha1')
+                        break
+                # Fall back to the first file if no primary flag is set
+                if file_hash is None and version_info.get('files'):
+                    file_hash = version_info['files'][0].get('hashes', {}).get('sha1')
+                version_info['file_hash'] = file_hash.lower() if file_hash else None
                 self.logger.info(f"Found latest version for Modrinth project {project_id}: {version_info.get('version_number')}")
                 return version_info
             
