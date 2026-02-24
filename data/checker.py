@@ -170,7 +170,7 @@ class ModUpdateChecker:
         
         # Create a scanning progress bar with status information
         scan_bar = tqdm(
-            desc="📁 Scan", 
+            desc="Scan", 
             total=len(mod_dirs),
             unit="dir", 
             bar_format="{desc}: {percentage:3.0f}% |{bar}| {n_fmt}/{total_fmt}",
@@ -190,7 +190,7 @@ class ModUpdateChecker:
                 
                 # Only update the description when the mod count changes significantly (every 5 mods)
                 if total_mods % 5 == 0 or total_mods == 1:
-                    scan_bar.set_description(f"📁 {total_mods}m")
+                    scan_bar.set_description(f"Scan {total_mods}m")
                 scan_bar.update(1)
         finally:
             # Make sure to clear the current line and close the bar properly
@@ -220,7 +220,7 @@ class ModUpdateChecker:
         # Create a processing progress bar with update counter
         process_bar = tqdm(
             mod_files,
-            desc=f"🔍 {total_mods}m",
+            desc=f"Check {total_mods}m",
             unit="mod",
             bar_format="{desc} [{n_fmt}/{total_fmt}] {percentage:3.0f}% |{bar}|",
             position=0,
@@ -267,7 +267,7 @@ class ModUpdateChecker:
                         if len(updates) != last_update_count:
                             last_update_count = len(updates)
                             process_bar.set_description(
-                                f"🔍 {total_mods}m/{len(updates)}u"
+                                f"Check {total_mods}m/{len(updates)}u"
                             )
                 except Exception as e:
                     # Log error without breaking the progress bar
@@ -290,9 +290,9 @@ class ModUpdateChecker:
         # Print a summary of the update check
         update_count = len(updates)
         if update_count > 0:
-            tqdm.write(f"✅ Found {update_count} mod{'' if update_count == 1 else 's'} with available updates")
+            tqdm.write(f"Found {update_count} mod{'' if update_count == 1 else 's'} with available updates")
         else:
-            tqdm.write("✅ All mods are up to date")
+            tqdm.write("All mods are up to date")
         
         return updates
     
@@ -555,7 +555,7 @@ class ModUpdateChecker:
         # Create download progress bar
         download_bar = tqdm(
             updates, 
-            desc="🔍 DRY RUN" if dry_run else "⬇️ DL", 
+            desc="DRY RUN" if dry_run else "Downloading",
             unit="mod", 
             position=0, 
             leave=True,  # Leave the bar visible after completion
@@ -722,7 +722,7 @@ class ModUpdateChecker:
                 update["installed_file_path"] = new_file_path
                 installed_updates.append(update)
                 tqdm.write(
-                    f"✅ Installed {mod_name}: {old_filename} → {new_filename}"
+                    f"Installed {mod_name}: {old_filename} -> {new_filename}"
                 )
             except Exception as e:
                 self.logger.error(f"Failed to install {mod_id}: {e}")
