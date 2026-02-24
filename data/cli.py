@@ -162,8 +162,11 @@ def run() -> int:
             # Handle downloads
             if args.no_interaction:
                 logger.info("Skipping downloads (--no-interaction specified)")
-            elif args.download_all:
-                logger.info("Automatically downloading all updates (--download-all specified)")
+            elif args.dry_run or args.download_all:
+                if args.dry_run:
+                    logger.info("Dry run: simulating download of all updates (--dry-run specified)")
+                else:
+                    logger.info("Automatically downloading all updates (--download-all specified)")
                 checker.download_updates(updates, dry_run=args.dry_run)
             else:
                 # Interactive download menu

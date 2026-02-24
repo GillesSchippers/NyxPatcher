@@ -545,12 +545,15 @@ class ModUpdateChecker:
             
         successful_downloads = []
         
-        tqdm.write(f"Downloading {len(updates)} mod updates...")
+        if dry_run:
+            tqdm.write(f"[DRY RUN] Would download {len(updates)} mod update(s) — no files will be written")
+        else:
+            tqdm.write(f"Downloading {len(updates)} mod updates...")
         
         # Create download progress bar
         download_bar = tqdm(
             updates, 
-            desc="⬇️ DL", 
+            desc="🔍 DRY RUN" if dry_run else "⬇️ DL", 
             unit="mod", 
             position=0, 
             leave=True,  # Leave the bar visible after completion
@@ -582,7 +585,7 @@ class ModUpdateChecker:
                 self.logger.debug(f"Downloading {mod_id} v{latest_version} to {output_path}")
                 
                 if dry_run:
-                    self.logger.info(f"[DRY RUN] Would download {mod_id} v{latest_version}")
+                    tqdm.write(f"[DRY RUN] Would download {mod_name} ({mod_id}) v{latest_version} via {provider}")
                     successful_downloads.append(update)
                     continue
                     
