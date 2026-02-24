@@ -78,6 +78,9 @@ class ModUpdateChecker:
         self.force_update = force_update
         self.logger = logging.getLogger(__name__)
         
+        # Whether Sinytra Connector is installed (detected during check_updates)
+        self._connector_installed: bool = False
+        
         # Initialize API providers
         self.providers = {}
         self._init_providers()
@@ -117,6 +120,36 @@ class ModUpdateChecker:
                 "CurseForge API key not set. CurseForge provider will not be available."
             )
     
+    # Mod ID used by the Sinytra Connector mod
+    CONNECTOR_MOD_ID = "connector"
+
+    def _detect_connector(self, mod_files: List[str]) -> bool:
+        """
+        Detect whether Sinytra Connector is present in the scanned mod files.
+
+        Sinytra Connector (mod ID ``connector``) enables Fabric mods to run on
+        NeoForge/Forge.  The Fabric-release fallback in ``_check_for_update``
+        is only meaningful when Connector is actually installed.
+
+        Args:
+            mod_files: List of mod file paths found in the configured directories.
+
+        Returns:
+            True if Sinytra Connector is installed, False otherwise.
+        """
+        for file_path in mod_files:
+            try:
+                metadata = self._get_mod_metadata(normalize_path(file_path))
+                if metadata.get("mod_id") == self.CONNECTOR_MOD_ID:
+                    self.logger.info(
+                        f"Sinytra Connector detected ({file_path}); "
+                        "Fabric-release fallback enabled for NeoForge/Forge"
+                    )
+                    return True
+            except Exception as e:
+                self.logger.debug(f"Error reading metadata for {file_path}: {e}")
+        return False
+
     def check_updates(self) -> List[Dict[str, Any]]:
         """
         Check for updates to mods.
@@ -171,6 +204,11 @@ class ModUpdateChecker:
             tqdm.write("\nNo mod files found in the configured directories.")
             print("", end="\r", flush=True)  # Ensure the line is cleared
             return []
+        
+        # Detect Sinytra Connector before processing individual mods so that
+        # the cross-loader fallback in _check_for_update can use the result.
+        if self.config.get_normalized_mod_loader() in ("neoforge", "forge"):
+            self._connector_installed = self._detect_connector(mod_files)
             
         # Track processed files for cache cleanup
         processed_files = set()
@@ -358,12 +396,12 @@ class ModUpdateChecker:
         mod_loader = mod_metadata.get("mod_loader")
         
         # Determine which loaders to check, in priority order.
-        # Sinytra Connector allows Fabric mods to run on NeoForge.
-        # When the configured loader is neoforge and the mod metadata is for fabric,
-        # check for a neoforge release first (main loader takes priority), then fall
-        # back to a fabric release (which Sinytra Connector can run).
-        if configured_loader == "neoforge" and mod_loader == "fabric":
-            loaders_to_check = ["neoforge", "fabric"]
+        # Sinytra Connector allows Fabric mods to run on NeoForge/Forge.
+        # When Sinytra Connector is installed and the mod metadata is for fabric,
+        # check for a native (neoforge/forge) release first (main loader takes
+        # priority), then fall back to a fabric release that Connector can run.
+        if configured_loader in ("neoforge", "forge") and mod_loader == "fabric" and self._connector_installed:
+            loaders_to_check = [configured_loader, "fabric"]
         else:
             loaders_to_check = [configured_loader]
         

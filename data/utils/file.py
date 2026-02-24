@@ -31,6 +31,12 @@ FABRIC_MOD_JSON = "fabric.mod.json"
 FORGE_TOML = "META-INF/mods.toml"
 NEOFORGE_TOML = "META-INF/neoforge.mods.toml"
 QUILT_JSON = "quilt.mod.json"
+# Pattern to identify a NeoForge dependency entry in an old-format mods.toml file.
+# Matches [[dependencies.<modid>]] sections that contain modId = "neoforge".
+NEOFORGE_DEPENDENCY_PATTERN = re.compile(
+    r'\[\[dependencies\.[^\]]+\]\][^\[]*modId\s*=\s*"neoforge"',
+    re.DOTALL
+)
 
 
 def download_file(url: str, output_path: str, timeout: int = 30) -> bool:
@@ -250,7 +256,7 @@ def get_mod_metadata(file_path: str) -> Dict[str, Any]:
                     content = f.read().decode('utf-8', errors='ignore')
                 
                 # Detect NeoForge 1.20.1 old format: has a neoforge dependency entry
-                if re.search(r'\[\[dependencies\.[^\]]+\]\][^\[]*modId\s*=\s*"neoforge"', content, re.DOTALL):
+                if NEOFORGE_DEPENDENCY_PATTERN.search(content):
                     result["mod_loader"] = "neoforge"
                 else:
                     result["mod_loader"] = "forge"
