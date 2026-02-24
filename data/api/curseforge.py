@@ -42,7 +42,8 @@ class CurseForgeProvider(BaseProvider):
         self.logger = logging.getLogger(__name__)
         
         # Resolve the key to use, preferring explicit > env-var > built-in
-        env_key = os.environ.get("CURSEFORGE_API_KEY", "")
+        env_key = os.environ.get("CURSEFORGE_API_KEY", "").strip()
+        api_key = api_key.strip() if api_key else ""
         if api_key:
             self.api_key = api_key
             self.logger.debug("Using CurseForge API key from configuration.")
@@ -54,6 +55,7 @@ class CurseForgeProvider(BaseProvider):
             self.logger.debug("No custom CurseForge API key provided; using built-in default.")
         
         self.headers = {
+            "Accept": "application/json",
             "x-api-key": self.api_key
         }
         self.max_retries = 3
@@ -309,13 +311,16 @@ class CurseForgeProvider(BaseProvider):
         Returns:
             Response object or None if request failed
         """
+        # Only send the API key to CurseForge API endpoints, not CDN download URLs
+        headers = self.headers if url.startswith(CURSEFORGE_API_BASE) else {}
+
         for attempt in range(self.max_retries):
             try:
                 response = requests.request(
                     method, 
                     url, 
                     params=params, 
-                    headers=self.headers,
+                    headers=headers,
                     stream=stream
                 )
                 response.raise_for_status()
