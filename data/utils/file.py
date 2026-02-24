@@ -202,9 +202,16 @@ def get_mod_metadata(file_path: str) -> Dict[str, Any]:
                     result["description"] = mod_info.get("description")
                     
                     # Handle different author formats in fabric.mod.json
+                    # Authors can be strings or dicts with 'name' (and optional 'contact') keys
                     if "authors" in mod_info:
                         if isinstance(mod_info["authors"], list):
-                            result["authors"] = ", ".join(mod_info["authors"])
+                            author_names = []
+                            for author in mod_info["authors"]:
+                                if isinstance(author, dict):
+                                    author_names.append(author.get("name", "Unknown"))
+                                else:
+                                    author_names.append(str(author))
+                            result["authors"] = ", ".join(author_names)
                         else:
                             result["authors"] = str(mod_info["authors"])
                             
@@ -431,7 +438,10 @@ def find_mod_files(directory: str, recursive: bool = True) -> List[str]:
         
     mod_files = []
     
-    for root, _, files in os.walk(directory):
+    for root, dirs, files in os.walk(directory):
+        # Skip subdirectories starting with '.' (e.g. .connector)
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+
         for file in files:
             file_path = os.path.join(root, file)
             if is_valid_mod_file(file_path):
