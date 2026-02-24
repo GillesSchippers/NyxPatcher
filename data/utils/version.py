@@ -118,8 +118,11 @@ def normalize_version(version: str) -> str:
 
     # Handle "1.21.1-1.5.10-neoforge" or "1.21-2.11.11-neoforge" -> "1.5.10" / "2.11.11"
     # (gameversion-modversion with optional loader/build suffix or end of string)
+    # The game-version part must look like a modern Minecraft release (1.7 or higher)
+    # to avoid misinterpreting "modver-gameversion" strings such as "0.8.2-1.21.1"
+    # as "gameversion-modversion" and extracting the wrong half.
     game_mod_pattern = re.match(
-        r'\d+\.\d+(?:\.\d+)?-(\d+(?:\.\d+)*)(?:[+-]|$)', version
+        r'1\.(?:[7-9]|\d{2,})(?:\.\d+)?-(\d+(?:\.\d+)*)(?:[+-]|$)', version
     )
     if game_mod_pattern:
         version = game_mod_pattern.group(1)
@@ -189,7 +192,12 @@ def extract_prerelease_and_build(version: str) -> Tuple[Optional[str], Optional[
     # Check for semver style prerelease: 1.2.3-alpha.1
     prerelease_match = re.search(r'-([a-zA-Z0-9.-]+)(?:\+|$)', version)
     if prerelease_match:
-        prerelease = prerelease_match.group(1)
+        candidate = prerelease_match.group(1)
+        # Only treat as prerelease if it contains alphabetic characters.
+        # Pure numeric suffixes like "1.21.1" are Minecraft game-version
+        # markers, not prerelease identifiers.
+        if re.search(r'[a-zA-Z]', candidate):
+            prerelease = candidate
     
     # Check for semver style build metadata: 1.2.3+build.5
     build_match = re.search(r'\+([a-zA-Z0-9.-]+)$', version)
